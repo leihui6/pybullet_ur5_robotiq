@@ -175,6 +175,11 @@ class UR5Robotiq85(RobotBase):
                              useFixedBase=True, flags=p.URDF_ENABLE_CACHED_GRAPHICS_SHAPES)
         self.gripper_range = [0, 0.085]
     
+
+    def get_id(self):
+        return self.id
+
+
     def __post_load__(self):
         # To control the gripper
         mimic_parent_name = 'finger_joint'
@@ -184,6 +189,7 @@ class UR5Robotiq85(RobotBase):
                                 'left_inner_finger_joint': -1,
                                 'right_inner_finger_joint': -1}
         self.__setup_mimic_joints__(mimic_parent_name, mimic_children_names)
+
 
     def __setup_mimic_joints__(self, mimic_parent_name, mimic_children_names):
         self.mimic_parent_id = [joint.id for joint in self.joints if joint.name == mimic_parent_name][0]

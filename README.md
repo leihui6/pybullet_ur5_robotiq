@@ -1,22 +1,12 @@
-# Gym-Styled UR5 arm with Robotiq-85 / 140 gripper in PyBullet simulator
+# Simulator for Active Perception
 
-*Probably the best one among all GitHub repos.*
+Thanks for [ElectronicElephant](https://github.com/ElectronicElephant/pybullet_ur5_robotiq) very much!
 
-This repo is under active development. Issues / PRs are welcomed.
-
-![User Control Demo](https://raw.githubusercontent.com/ElectronicElephant/pybullet_ur5_robotiq/main/example.png)
-
-## Highlights
-
-- UR5 arm with end-effector 6D IK (Position [X Y Z] and Orientation [R P Y])
-- Enhanced Robotiq-85 / 140 gripper, with precise position control and experimental torque control
-- Built-in YCB models loader (and obj models after decomposition)
-- Gym-styled API, making it suitable for Reinforcement Learning in the field of push-and-grasp
-- A heuristic grasping demo
-- An interactive user-control demo
+This repository was adapted to use for active perception simulation.
 
 ## Prerequisite
-- Python 3
+
+- Python 3.8 +
 - PyBullet
 
 ## Run
@@ -25,14 +15,6 @@ You can try this repo with the interactive user-control demo.
 ```[Python]
 python main.py
 ```
-
-You can change the XYZ and RPY of the gripper on the right panel.
-
-Press `Z` to close the gripper and `R` to open it.
-
-## Usage
-
-See `heuristic demo` in `main.py`.
 
 ###  References
 https://github.com/matafela/pybullet_grasp_annotator_robotiq_85

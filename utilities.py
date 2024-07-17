@@ -3,11 +3,13 @@ import glob
 from collections import namedtuple
 from attrdict import AttrDict
 import functools
-import torch
+# import torch
 import cv2
 from scipy import ndimage
 import numpy as np
+import PIL.Image as Image
 
+import open3d as o3d
 
 class Models:
     def load_objects(self):
@@ -24,7 +26,6 @@ class YCBModels(Models):
     def __init__(self, root, selected_names: tuple = ()):
         self.obj_files = glob.glob(root)
         self.selected_names = selected_names
-
         self.visual_shapes = []
         self.collision_shapes = []
 
@@ -66,13 +67,28 @@ class Camera:
         self.near, self.far = near, far
         self.fov = fov
 
-        aspect = self.width / self.height
+        self.aspect = self.width / self.height
         self.view_matrix = p.computeViewMatrix(cam_pos, cam_tar, cam_up_vector)
-        self.projection_matrix = p.computeProjectionMatrixFOV(self.fov, aspect, self.near, self.far)
+        self.projection_matrix = p.computeProjectionMatrixFOV(self.fov, self.aspect, self.near, self.far)
 
         _view_matrix = np.array(self.view_matrix).reshape((4, 4), order='F')
         _projection_matrix = np.array(self.projection_matrix).reshape((4, 4), order='F')
         self.tran_pix_world = np.linalg.inv(_projection_matrix @ _view_matrix)
+
+        
+
+
+    def update_pose(self, cameraPos, targetPos, cameraupPos):
+        self.aspect = self.width / self.height
+        self.view_matrix = p.computeViewMatrix(
+                cameraEyePosition = cameraPos,
+                cameraTargetPosition = targetPos,
+                cameraUpVector = cameraupPos)
+        self.projection_matrix = p.computeProjectionMatrixFOV(self.fov, self.aspect, self.near, self.far)
+        _view_matrix = np.array(self.view_matrix).reshape((4, 4), order='F')
+        _projection_matrix = np.array(self.projection_matrix).reshape((4, 4), order='F')
+        self.tran_pix_world = np.linalg.inv(_projection_matrix @ _view_matrix)
+
 
     def rgbd_2_world(self, w, h, d):
         x = (2 * w - self.width) / self.width
@@ -81,15 +97,55 @@ class Camera:
         pix_pos = np.array((x, y, z, 1))
         position = self.tran_pix_world @ pix_pos
         position /= position[3]
-
         return position[:3]
+
+    def rgb_2_Image(self, rgb):
+        rgbImage = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
+        return rgbImage
+
+    def depth_2_Image(self, depth):
+        depth_buffer_tiny = np.reshape(depth, [self.width, self.height])
+        depImg = self.far * self.near / (self.far - (self.far - self.near) * depth_buffer_tiny)
+        depImg = np.asanyarray(depImg).astype(np.float32) * 1000.  # mm -> meter
+        
+        depImg = (depImg.astype(np.uint16)) # save as png
+        # depImg = Image.fromarray(depImg)
+        # depImg.save('./test.png')
+
+        # depImg = (depImg.astype(np.uint8)) # save as jpg
+        # depImg = Image.fromarray(depImg)
+        # depImg.save('./test.jpg')
+        return depImg
+
+
+    def rgb_depth_2_Pointcloud(self, rgbImage, depthImage):
+        rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(o3d.geometry.Image(rgbImage), 
+                                                                        o3d.geometry.Image(depthImage),
+                                                                        convert_rgb_to_intensity=False)
+        intrinsic = o3d.camera.PinholeCameraIntrinsic(
+                o3d.camera.PinholeCameraIntrinsicParameters.Kinect2DepthCameraDefault)
+        # print (self.projection_matrix)
+        # print (type(self.projection_matrix))
+        P_0, P_1 = self.projection_matrix[0], self.projection_matrix[5]
+        intrinsic.set_intrinsics(width=self.width, height=self.height,
+                                 fx = P_0 * self.width / 2, fy = P_1 * self.height / 2,
+                                 cx = self.width / 2, cy = self.height / 2)
+        point_cloud = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_image, intrinsic)
+        # o3d.visualization.draw_geometries([point_cloud])
+        return point_cloud
+        
 
     def shot(self):
         # Get depth values using the OpenGL renderer
         _w, _h, rgb, depth, seg = p.getCameraImage(self.width, self.height,
                                                    self.view_matrix, self.projection_matrix,
                                                    )
-        return rgb, depth, seg
+        _rgbImage = self.rgb_2_Image(rgb)
+        _depthImage = self.depth_2_Image(depth)
+        _pointcloud = self.rgb_depth_2_Pointcloud(_rgbImage, _depthImage)
+        # return rgb, depth, seg
+        return _rgbImage, _depthImage, _pointcloud, seg
+
 
     def rgbd_2_world_batch(self, depth):
         # reference: https://stackoverflow.com/a/62247245
