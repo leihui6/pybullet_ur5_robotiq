@@ -33,7 +33,7 @@ class ClutteredPushGrasp:
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         # p.setGravity(0, 0, -10)
         p.setGravity(0, 0, 0)
-        self.planeID = p.loadURDF("plane.urdf")
+        # self.planeID = p.loadURDF("plane.urdf")
 
         self.robot.load()
         self.robot.step_simulation = self.step_simulation
@@ -75,7 +75,6 @@ class ClutteredPushGrasp:
         rot_axis_1 = self.normalize(rot_axis_1)
 
         r1 = R.from_rotvec((theta + np.pi) * rot_axis_1)
-
         quaternion = r1.as_quat()
         return quaternion
 
@@ -100,28 +99,20 @@ class ClutteredPushGrasp:
 
 
     def update_camera(self, R, theta, beta):
-        # state = p.getLinkState(self.robot.get_id(), 5) # wrist_3_joint
-
         r_theta, r_beta = np.deg2rad(theta), np.deg2rad(beta)
         x = R * np.sin(r_theta) * np.cos(r_beta)
         y = R * np.sin(r_theta) * np.sin(r_beta)
         z = R * np.cos(r_theta)
-        cameraPos = [x,y,z] #np.array(state[0])
-        p.addUserDebugLine(cameraPos, [0,0,0], [1, 0, 0], 1)
+        cameraPos = [x,y,z]
+        # p.addUserDebugLine(cameraPos, [0,0,0], [1, 0, 0], 1)
         
         quaM = self.compute_rotation_matrix_to_center(cameraPos, theta, beta)
         p.resetBasePositionAndOrientation(self.cameraID, cameraPos, quaM)
 
-        # qq=np.array(state[1])
-        # rot = R.from_quat(qq).as_matrix()
-        # targetPos = np.matmul(rot, np.array([0, 0,-1])) + cameraPos
-        # orPos, orOrn = p.getBasePositionAndOrientation(self.robot.get_id())
-        # print (orPos, orOrn)
         targetPos = [0,0,0]
-        cameraupPos = [0,0,1.0] #np.matmul(rot, np.array([-1, 0, 0]))
-
-        self.camera.update_pose(cameraPos, targetPos, cameraupPos)
-        
+        cameraupPos = [0,0,1.0] 
+        view_matrix = self.camera.update_pose(cameraPos, targetPos, cameraupPos)
+        return view_matrix
 
     def step_simulation(self):
         """
@@ -131,6 +122,7 @@ class ClutteredPushGrasp:
         if self.vis:
             time.sleep(self.SIMULATION_STEP_DELAY)
             self.p_bar.update(0.1)
+
 
     def read_debug_parameter(self):
         # read the value of task parameter
@@ -143,6 +135,7 @@ class ClutteredPushGrasp:
         gripper_opening_length = p.readUserDebugParameter(self.gripper_opening_length_control)
 
         return x, y, z, roll, pitch, yaw, gripper_opening_length
+
 
     def step(self, action, control_method='joint'):
         """
@@ -166,6 +159,7 @@ class ClutteredPushGrasp:
         
         return self.get_observation() # rgbImage, depthImage, seg
 
+
     def update_reward(self):
         reward = 0
         if not self.box_opened:
@@ -183,6 +177,7 @@ class ClutteredPushGrasp:
                 reward = 1
         return reward
 
+
     def get_observation(self):
         obs = dict()
         if isinstance(self.camera, Camera):
@@ -192,18 +187,20 @@ class ClutteredPushGrasp:
             assert self.camera is None
         # obs.update(self.robot.get_joint_obs())
         # print (obs)
-        
         return obs
+
 
     def reset_box(self):
         # p.setJointMotorControl2(self.boxID, 0, p.POSITION_CONTROL, force=1)
         # p.setJointMotorControl2(self.boxID, 1, p.VELOCITY_CONTROL, force=0)
         pass
 
+
     def reset(self):
         self.robot.reset()
         self.reset_box()
         return self.get_observation()
+
 
     def close(self):
         p.disconnect(self.physicsClient)

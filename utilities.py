@@ -75,8 +75,6 @@ class Camera:
         _projection_matrix = np.array(self.projection_matrix).reshape((4, 4), order='F')
         self.tran_pix_world = np.linalg.inv(_projection_matrix @ _view_matrix)
 
-        
-
 
     def update_pose(self, cameraPos, targetPos, cameraupPos):
         self.aspect = self.width / self.height
@@ -88,6 +86,7 @@ class Camera:
         _view_matrix = np.array(self.view_matrix).reshape((4, 4), order='F')
         _projection_matrix = np.array(self.projection_matrix).reshape((4, 4), order='F')
         self.tran_pix_world = np.linalg.inv(_projection_matrix @ _view_matrix)
+        return _view_matrix
 
 
     def rgbd_2_world(self, w, h, d):
@@ -163,3 +162,15 @@ class Camera:
         position[:, :] /= position[:, 3:4]
 
         return position[:, :3].reshape(*x.shape, -1)
+
+def pybullet_2_world(pc, view_matrix):
+    #left hand -> right hand
+    depth=np.asarray(pc.points)
+    for i in range(len(depth)):
+        depth[i][0]=- depth[i][0]
+    pc.points = o3d.utility.Vector3dVector(depth)
+    R1 = view_matrix[:3, :3].T
+    T = view_matrix[:3, 3]
+    pc = pc.translate((T[0], T[1], T[2]), relative=True)
+    pc = pc.rotate(R1, center=(0, 0, 0))
+    return pc

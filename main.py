@@ -7,7 +7,7 @@ import cv2
 from tqdm import tqdm
 from env import ClutteredPushGrasp
 from robot import Panda, UR5Robotiq85, UR5Robotiq140
-from utilities import YCBModels, Camera
+from utilities import YCBModels, Camera, pybullet_2_world
 import time
 import math
 import open3d as o3d
@@ -38,13 +38,19 @@ def user_control_demo():
         # pass
 
     for theta in range(10,90,10): # height
-        for beta in range(0,360,10): # XY-plane
-            env.update_camera(R, theta, beta)
+        for beta in range(0,360,180): # XY-plane
+            view_matrix = env.update_camera(R, theta, beta)
             env.robot.reset()
             obs = env.step(env.read_debug_parameter(), 'end')
-            # input()
+            
             # pointcloud = obs['pc'] 
+            # pc_world = pybullet_2_world(pointcloud, view_matrix)
+            # np.savetxt(f'./test_pc_{beta}.txt', np.asarray(pc_world.points))
             # o3d.visualization.draw_geometries([pointcloud])
+
+            # x = input()
+            # if x == 'q':
+                # exit()
 
         # rgbImage = obs['rgb']
         # depthImage = obs['depth'] 
